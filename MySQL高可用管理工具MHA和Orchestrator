@@ -1,0 +1,26 @@
+                                     MySQL高可用管理工具MHA和Orchestrator
+                                     
+
+特点:
+
+1,MHA使用Perl, Orchestrator使用Go语言开发;
+2,MHA已经不同再开发，Orchestrator持续活跃中;
+3,相比MHA的安装和配置复杂程度，Orchestrator安装和配置比较简单;
+4,Orchestrator本身需要使用数据库进行元数据库存储,可以使用sql lite或是mysql等;
+
+
+工具本身的高用问题 :
+
+  MHA本身没有高可用方式，而Orchestrator通过raft协议可以提供高可用;
+  
+
+失败检测:
+
+   MHA对失败检测存在漏洞，当MHA的管理端到达主库不通时，就认为主库发生故障，执行故障转移,
+而Orchestrator在检测主库不通时，还要通过从库去检测是是不是存在通的情况，如果在从库上发
+现主从复制正常，就不会执行故障转移，从而避免了管理工具到主库不通而发的错误故障发性情况，
+所以我们认这种检测试更新健壮.
+
+拓扑管理:
+
+   可以通过Orchestrator WEB UI拖动进行复制拓扑管理及当前拓扑界面的可视化等;
