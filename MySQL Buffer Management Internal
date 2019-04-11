@@ -1,0 +1,61 @@
+   MySQL buffer三个list: free buffer; LRU,Flush list(dirty list),每个buffer pool的大小刚好是一个
+page的大小（innodb_page_size，默认为16KB),每个buffer pool根据用途的不同，会被划分成不同的类型 ,比
+如: SYSTEM ,ALLOCATED,INODE,IBUF_INDEX,INDEX,IBUF_BITMAP ,TRX_SYSTEM,UNDO_LOG,FILE_SPACE_HEADER ,BLOB 
+等类型
+
+  Free buffer的list比较好理解，在该list上的buffer pool都可以用来存放从磁盘中读取的数据页面,
+
+  每个LRU分为两部分:Yong和Old, Yong的头部是访问多次的数据块，而Old的尾部是使用的最少的数据块。至所以
+是这样划分，是为了在读取数据块的时候方便存储数据的位置，从而避免因为只是一次性的读取而把整个buffer pool的
+管理冲洗掉.默认情况下Yong和Old的分界点是整 个buffer pool的37%的位置.在0-64%是Yong的部分，其余部分则是Old。
+DBA可以通过innodb_old_blocks_pct参数进行调整 .降低该参数设置，则数据块会尽可能被保留在内存中，而新读取的数据则尽快被丢弃.
+
+  当存在于Old 部分的buffer page在某个时间再次访问时(参数innodb_old_blocks_time=1000,1秒)
+那么这个buffer page就需要移到Yong部分，可以通过show engine innodb status可以得到该状态.
+Pages made young 0, not young 0
+0.00 youngs/s, 0.00 non-youngs/s
+Pages made young这个指标越低，意味着块都是从磁盘中读取，越高意味着大部分buffer pool都可以多次利用，buffer pool hit的指标相应越高.
+
+  Flush list(dirty list)主要是用来存放当前已经被更改过的buffer pool page,在内存不足或是数据库做checkpoint等条件时，
+就会被page cleaners线程写回到磁盘中.Flush list的大小默认可以占到整个buffer pool的75%，这个值由参数innodb_max_dirty_pages_pct来控制.
+
+
+  通过innodb_buffer_pool_size参数可以定义整个Buffer pool的大小，每个innodb_buffer_pool_size最小不能小于5M,
+如果在配置文件中没有设置一个值，则默认为128M.，如果大于1G,建议调整 innodb_buffer_pool_instances参数,
+每个buffer pool instance都有一个free buffer,LRU和Flush list实例 。原则上每个buffer pool instances不能小于1G,
+增加此参数的目标主要是形成多个: free buffer; LRU,Flush list(dirty list)实例,从而减少了内存管理相关的Mutex争用，
+增加对buffer pool访问的并发性;
+
+  当mysql实例实始启动时，mysql向OS申请内存块，当实例初始化内存块后，这时候每个buffer pool page都为空，
+因此所有buffer pool(mysql实例在启动时也会加载数据字典信息)的page都在Free buffer list上;
+
+ 当线程读取数据块时,首先从LRU上进行查找，如果没有查找到，这时候就需要从磁盘中读取到buffer pool中来，
+会首先去Free buffer中查找空闲空间，如果没有找到，则需要通过page cleaner线程刷出dirty list中的
+page到磁盘上为新的页面提供空间; 
+
+一个buffer pool page可能会同时存放存在LRU或是Flush list上,但是不会同时存在于Free buffer和Flush list上
+
+information_schema.innodb_buffer_page_lru可以看到每到LRU上的每个 page的状态;
+
+通过show engine innodb status可以看当前buffer的状态.
+
+...........................
+
+Buffer pool size   8191
+Buffer pool size, bytes 134201344
+Free buffers       7651
+Database pages     538
+Old database pages 209
+Modified db pages  0
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 0, not young 0
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 257, created 281, written 1040
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 1000 / 1000, young-making rate 0 / 1000 not 0 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 538, unzip_LRU len: 0
+I/O sum[0]:cur[0], unzip sum[0]:cur[0]
+
+............................
