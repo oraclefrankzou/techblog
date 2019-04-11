@@ -1,4 +1,7 @@
-   MySQL buffer三个list: free buffer; LRU,Flush list(dirty list),每个buffer pool的大小刚好是一个
+                           MySQL Buffer Management Internal
+   
+   
+     MySQL buffer三个list: free buffer; LRU,Flush list(dirty list),每个buffer pool的大小刚好是一个
 page的大小（innodb_page_size，默认为16KB),每个buffer pool根据用途的不同，会被划分成不同的类型 ,比
 如: SYSTEM ,ALLOCATED,INODE,IBUF_INDEX,INDEX,IBUF_BITMAP ,TRX_SYSTEM,UNDO_LOG,FILE_SPACE_HEADER ,BLOB 
 等类型
