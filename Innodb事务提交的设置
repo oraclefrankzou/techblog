@@ -1,0 +1,70 @@
+                                     Innodb事务提交的设置
+
+    调用trx_flush_log_if_needed_low(),位于trx0trx.cc文件中，取决于innodb_flush_log_at_trx_commit文件的
+设置,这个函数接受一个lsn参数，表示当前在这个日志lsn以前的都需要进行写操作. 但是是否同步到磁盘中由flush参数决定,
+如果innodb_flush_log_at_trx_commit这个参数不设置的话，默认0,可以看到并不做任何写和同步操作，设置为1或是2,每次
+事务提交时都要调用log_write_up_to()函数,位于trx0trx.cc文件，区别在于为1是flush为true,为2时flush为false，而flush设置定义
+了是仅写还是写和同步; 
+
+    我们在这里需要区分linux的磁盘写和同步的意义，写是指应用程序调用read(或pread)函数写应用程序空间内存内容到文件系统中,
+但是由于文件系统的本身的cache机制，这种写并不一定为真正写到磁盘中，所以在操作系统异常崩溃时可能产生数据丢失的情况.
+而同步是指调用了linux操作系统的fsync(或fdatasync)表示写出数据到文件系统后，并指示操作系统把数据还要从文件系统cache同
+步到真正的磁盘上。通过两种方式的比较，可以看到同步的开销比写的开销大，因为需要真正的物理磁盘写.
+
+
+
+/**********************************************************************//**
+If required, flushes the log to disk based on the value of
+innodb_flush_log_at_trx_commit. */
+static
+void
+trx_flush_log_if_needed_low(
+/*========================*/
+	lsn_t	lsn)	/*!< in: lsn up to which logs are to be
+			flushed. */
+{
+#ifdef _WIN32
+	bool	flush = true;
+#else
+	bool	flush = srv_unix_file_flush_method != SRV_UNIX_NOSYNC;
+#endif /* _WIN32 */
+
+	switch (srv_flush_log_at_trx_commit) {
+	case 2:
+		/* Write the log but do not flush it to disk */
+		flush = false;
+		/* fall through */
+	case 1:
+		/* Write the log and optionally flush it to disk */
+		log_write_up_to(lsn, flush);
+		return;
+	case 0:
+		/* Do nothing */
+		return;
+	}
+
+	ut_error;
+}
+
+
+log_write_up_to的函数调用了log_write_flush_to_disk_low()函数.来执行真正的同步日志文件到磁盘中
+     
+      void     log_write_up_to(
+	lsn_t	lsn,
+	bool	flush_to_disk)
+
+	if (flush_to_disk) {
+		log_write_flush_to_disk_low();
+	}
+
+
+void log_write_flush_to_disk_low()调用了fil_flush()函数,位置fil0fil.cc文件中，把可能由os进行cache的写内
+容刷新到磁盘中.fil_flush()函数调用os_file_flush(file)进行文件刷新
+  if (do_flush) {
+		log_group_t*	group = UT_LIST_GET_FIRST(log_sys->log_groups);
+		fil_flush(group->space_id);
+		log_sys->flushed_to_disk_lsn = log_sys->current_flush_lsn;
+	}
+
+
+
