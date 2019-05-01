@@ -1,4 +1,26 @@
                                      Innodb事务提交的设置
+				      
+   innodb事务提交的函数调用stack
+   
+   
+#0  trx_flush_log_if_needed_low (lsn=67182491) at /root/soft/mysql-5.7.25/storage/innobase/trx/trx0trx.cc:1787
+#1  0x0000000001ae1c22 in trx_flush_log_if_needed (lsn=67182491, trx=0x7f931b574d08) at /root/soft/mysql-5.7.25/storage/innobase/trx/trx0trx.cc:1816
+#2  0x0000000001ae361b in trx_commit_complete_for_mysql (trx=0x7f931b574d08) at /root/soft/mysql-5.7.25/storage/innobase/trx/trx0trx.cc:2451
+#3  0x00000000018bdcf8 in innobase_commit (hton=0x410ebc0, thd=0x7f931c021a30, commit_trx=true) at /root/soft/mysql-5.7.25/storage/innobase/handler/ha_innodb.cc:4439
+#4  0x0000000000f2e49c in ha_commit_low (thd=0x7f931c021a30, all=true, run_after_commit=true) at /root/soft/mysql-5.7.25/sql/handler.cc:1902
+#5  0x0000000001635b02 in TC_LOG_DUMMY::commit (this=0x2d2e7e8 <tc_log_dummy>, thd=0x7f931c021a30, all=true) at /root/soft/mysql-5.7.25/sql/tc_log.cc:28
+#6  0x0000000000f2e17b in ha_commit_trans (thd=0x7f931c021a30, all=true, ignore_global_read_lock=false) at /root/soft/mysql-5.7.25/sql/handler.cc:1798
+#7  0x0000000001638043 in trans_commit (thd=0x7f931c021a30) at /root/soft/mysql-5.7.25/sql/transaction.cc:239
+#8  0x000000000153cc67 in mysql_execute_command (thd=0x7f931c021a30, first_level=true) at /root/soft/mysql-5.7.25/sql/sql_parse.cc:4244
+#9  0x000000000154012b in mysql_parse (thd=0x7f931c021a30, parser_state=0x7f930831b690) at /root/soft/mysql-5.7.25/sql/sql_parse.cc:5570
+#10 0x0000000001535bba in dispatch_command (thd=0x7f931c021a30, com_data=0x7f930831bdf0, command=COM_QUERY) at /root/soft/mysql-5.7.25/sql/sql_parse.cc:1484
+#11 0x0000000001534aee in do_command (thd=0x7f931c021a30) at /root/soft/mysql-5.7.25/sql/sql_parse.cc:1025
+#12 0x00000000016650ae in handle_connection (arg=0x4d00220) at /root/soft/mysql-5.7.25/sql/conn_handler/connection_handler_per_thread.cc:306
+#13 0x0000000001cec564 in pfs_spawn_thread (arg=0x4c449d0) at /root/soft/mysql-5.7.25/storage/perfschema/pfs.cc:2190
+#14 0x00007f9329d1add5 in start_thread () from /lib64/libpthread.so.0
+#15 0x00007f9328be1ead in clone () from /lib64/libc.so.6
+
+
 
     调用trx_flush_log_if_needed_low(),位于trx0trx.cc文件中，取决于innodb_flush_log_at_trx_commit文件的
 设置,这个函数接受一个lsn参数，表示当前在这个日志lsn以前的都需要进行写操作. 但是是否同步到磁盘中由flush参数决定,
