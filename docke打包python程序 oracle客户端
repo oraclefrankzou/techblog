@@ -1,0 +1,14 @@
+
+   今天写了一个查询验证码的小app,需要查询oracle数据库; 由于oracle客户端在进行docker打包时，需要进行ln处理，备注一下
+
+FROM python:3.9
+WORKDIR /usr/local/app/codeget
+ADD instantclient-basiclite-linuxx64.tar.gz  /usr/local/app
+ADD codeget.tar.gz  /usr/local/app
+ENV ORACLE_HOME /usr/local/app/instantclient-basiclite-linuxx64/instantclient_21_1
+ENV LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH
+RUN apt update
+RUN apt-get install libaio1
+RUN ln -s /usr/local/app/instantclient-basiclite-linuxx64/instantclient_21_1/lib/libclntsh.so.21.1 /usr/local/app/instantclient-basiclite-linuxx64/instantclient_21_1/lib/libclntsh.so 
+RUN python3 -m pip install --no-cache-dir  -r /usr/local/app/codeget/requirements.txt
+ENTRYPOINT ["python3","App.py"]
