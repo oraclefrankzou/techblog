@@ -14,7 +14,7 @@
          setup.cfg,包含了模块的setup工具的配置信息，如果没有特别需求，保持 为空就可以了.
          setup.py 包含了模块的安装信息，这是来自于python内置包的setuptools,调用了setup()函数，可以根据需求定义函数的常见信息。
          
-          
+    ![image](https://github.com/oraclefrankzou/techblog/blob/master/images/%E5%A6%82%E4%BD%95%E6%9E%84%E5%BB%BA%E8%87%AA%E5%B7%B1%E7%9A%84python%E6%A8%A1%E5%9D%971.png)     
   
    比如我这个setup.py例子中的内容
 
